@@ -1,9 +1,13 @@
 package com;
 
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 import org.jasypt.util.text.TextEncryptor;
-
-import java.time.LocalDateTime;
 
 public class BasicTokenEncryptor implements TextEncryptor {
 
@@ -25,57 +29,59 @@ public class BasicTokenEncryptor implements TextEncryptor {
         this.encryptor.setPassword(password);
     }
 
-    public void setPassword(String password) {
-        this.encryptor.setPassword(password);
-    }
-
     public void setTimeInHours(int timeInHours) {
         this.timeInHours = timeInHours;
     }
-
+    
     public String encrypt(String token) {
-        if(this.encryptor == null) {
-            throw new RuntimeException("Encryptor not set");
-        }
         return this.encryptor.encrypt(token);
     }
 
-    public String newToken(String encryptedNickname, String encryptedPassword, LocalDateTime date) {
-        return encrypt(encryptedNickname + "+" + encryptedPassword + "+" + date);
-    }
-    public String newToken(String encryptedNickname, String encryptedPassword, LocalDateTime date, String separator) {
-        return encrypt(encryptedNickname + separator + encryptedPassword + separator + date);
+    public String newToken(Payload payload, LocalDateTime date) {
+        return encrypt(payload + "+" + date);
     }
 
-    public boolean verify(String token, String encryptedNickname, String encryptedPassword, int timeInHours){
-        String[] tokens = token.split("\\+");
 
-        if(!tokens[0].equals(encryptedNickname)){
+    public boolean verify(String token, Payload payloadValues, int timeInHours){
+        List<String> tokens = Arrays.asList(token.split("\\+"));
+
+        LocalDateTime issueDate = LocalDateTime.parse(tokens.getLast());
+
+        if (issueDate.isAfter(LocalDateTime.now())
+        ){
             return false;
         }
-        if(!tokens[1].equals(encryptedPassword)){
+
+        if (!(java.time.Duration.between(issueDate, LocalDateTime.now()).toHours() < timeInHours)){
             return false;
         }
-        System.out.println(tokens[0] + ":" + tokens[1]);
-        System.out.println(encryptedNickname + ":" + encryptedPassword);
 
-        LocalDateTime issueDate = LocalDateTime.parse(tokens[2]);
+        Map<String, String> decryptedMap = new HashMap<>();
 
-        return java.time.Duration.between(issueDate, LocalDateTime.now()).toHours() < timeInHours;
+        for (String tokenPart : tokens) {
+            String[] keyValue = tokenPart.split("=");
+            if (keyValue.length == 2) {
+            decryptedMap.put(keyValue[0], keyValue[1]);
+            }
+        }   
+   
+        return (payloadValues.getPayload().equals(decryptedMap));
     }
 
-    public boolean verifyEncriptedToken(String encriptedToken, String encryptedNickname, String encryptedPassword, int timeInHours){
+    public boolean verifyEncriptedToken(String encriptedToken, Payload payloadValues, int timeInHours){
         String token = this.encryptor.decrypt(encriptedToken);
 
-        return verify(token, encryptedNickname, encryptedPassword, timeInHours);
+        return verify(token, payloadValues, timeInHours);
     }
 
-    public boolean verifyEncriptedToken(String encriptedToken, String encryptedNickname, String encryptedPassword){
-        return verifyEncriptedToken(encriptedToken, encryptedNickname, encryptedPassword, this.timeInHours);
+    public boolean verifyEncriptedToken(String encriptedToken, Payload payloadValues){
+        String token = this.encryptor.decrypt(encriptedToken);
+
+        return verify(token, payloadValues, this.timeInHours);
     }
 
-    public boolean verify(String token, String encryptedNickname, String encryptedPassword){
-       return verify(token, encryptedNickname, encryptedPassword, this.timeInHours);
+    public boolean verify(String encriptedToken, Payload payloadValues){
+        return verify(encriptedToken, payloadValues, this.timeInHours);
     }
 
     public String decrypt(String token){
