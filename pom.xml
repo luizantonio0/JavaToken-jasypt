@@ -6,7 +6,7 @@
 
     <groupId>com</groupId>
     <artifactId>jasypt-token</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.01-ALPHA</version>
 
     <dependencies>
         <dependency>
