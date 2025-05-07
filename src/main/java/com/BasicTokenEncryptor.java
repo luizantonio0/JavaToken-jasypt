@@ -32,7 +32,8 @@ public class BasicTokenEncryptor implements TextEncryptor {
     public void setTimeInHours(int timeInHours) {
         this.timeInHours = timeInHours;
     }
-    
+
+    @Override
     public String encrypt(String token) {
         return this.encryptor.encrypt(token);
     }
@@ -84,6 +85,7 @@ public class BasicTokenEncryptor implements TextEncryptor {
         return verify(encriptedToken, payloadValues, this.timeInHours);
     }
 
+    @Override
     public String decrypt(String token){
         return this.encryptor.decrypt(token);
     }
